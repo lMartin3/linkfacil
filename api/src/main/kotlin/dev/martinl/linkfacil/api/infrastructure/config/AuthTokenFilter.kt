@@ -1,6 +1,5 @@
 package dev.martinl.linkfacil.api.infrastructure.persistence.config.jwt
 
-import dev.martinl.linkfacil.api.infrastructure.persistence.config.service.UserDetailsServiceImpl
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -12,8 +11,7 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 @Component
 class AuthTokenFilter(
-    private val jwtUtils: JwtUtils,
-    private val userDetailsService: UserDetailsServiceImpl
+    private val jwtUtils: JwtUtils
 ) : OncePerRequestFilter() {
 
     override fun doFilterInternal(
@@ -24,8 +22,7 @@ class AuthTokenFilter(
         try {
             val jwt = parseJwt(request)
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                val username = jwtUtils.getUsernameFromJwtToken(jwt)
-                val userDetails = userDetailsService.loadUserByUsername(username)
+                val userDetails = jwtUtils.getUserDetailsFromJwtToken(jwt)
                 val authentication = UsernamePasswordAuthenticationToken(
                     userDetails, null, userDetails.authorities
                 )

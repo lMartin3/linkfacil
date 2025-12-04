@@ -1,14 +1,15 @@
 package dev.martinl.linkfacil.api.application.controller
 
-import dev.martinl.linkfacil.api.domain.dto.JwtResponse
+import dev.martinl.linkfacil.api.application.service.AuthService
+import dev.martinl.linkfacil.api.domain.dto.FirebaseLoginRequest
 import dev.martinl.linkfacil.api.domain.dto.LoginRequest
 import dev.martinl.linkfacil.api.domain.dto.MessageResponse
 import dev.martinl.linkfacil.api.domain.dto.SignupRequest
-import dev.martinl.linkfacil.api.application.service.AuthService
 import jakarta.validation.Valid
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationManager
-import org.springframework.security.authentication.ProviderManager
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
@@ -28,11 +29,39 @@ class AuthController(private val authService: AuthService, private val authentic
         }
     }
 
-    override fun authenticateUser(@Valid @RequestBody loginRequest: LoginRequest): ResponseEntity<JwtResponse> {
-        println("Provider list: " + (authenticationManager as ProviderManager).providers)
-        val jwtResponse = authService.authenticateUser(loginRequest)
-        return ResponseEntity.ok(jwtResponse)
-    }
+    override fun authenticateUser(@Valid @RequestBody loginRequest: LoginRequest): ResponseEntity<Any> = runCatching {
+
+        authService.authenticateUser(loginRequest)
+    }.fold(
+        onSuccess = {
+            ResponseEntity.ok(it)
+        },
+        onFailure = {
+            when(it) {
+                is BadCredentialsException ->  ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(MessageResponse(it.message ?: "Incorrect credentials"))
+                else -> {
+                     ResponseEntity.internalServerError().body(it.message)
+                }
+            }
+        }
+    )
+
+    override fun authenticateUserViaFirebase(@RequestBody loginRequest: FirebaseLoginRequest): ResponseEntity<Any> = runCatching {
+        authService.authenticateUserWithFirebase(loginRequest)
+    }.fold(
+        onSuccess = {
+            ResponseEntity.ok(it)
+        },
+        onFailure = {
+            when(it) {
+                is BadCredentialsException ->  ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(MessageResponse(it.message ?: "Incorrect credentials"))
+                else -> {
+                    ResponseEntity.internalServerError().body(it.message)
+                }
+            }
+        }
+    )
+
 
     override fun verifyEmail(@RequestParam token: String): ResponseEntity<MessageResponse> {
         val isVerified = authService.verifyEmail(token)

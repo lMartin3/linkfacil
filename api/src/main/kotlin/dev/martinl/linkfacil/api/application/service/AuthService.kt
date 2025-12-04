@@ -1,15 +1,22 @@
 package dev.martinl.linkfacil.api.application.service
 
+import com.google.firebase.auth.FirebaseAuth
+import dev.martinl.linkfacil.api.domain.dto.FirebaseLoginRequest
 import dev.martinl.linkfacil.api.domain.dto.JwtResponse
 import dev.martinl.linkfacil.api.domain.dto.LoginRequest
 import dev.martinl.linkfacil.api.domain.dto.SignupRequest
-import dev.martinl.linkfacil.api.infrastructure.persistence.repository.UserRepositoryImpl
 import dev.martinl.linkfacil.api.infrastructure.persistence.config.jwt.JwtUtils
-import dev.martinl.linkfacil.api.infrastructure.persistence.config.service.UserDetailsImpl
+import dev.martinl.linkfacil.api.infrastructure.persistence.repository.UserRepositoryImpl
+import dev.martinl.linkfacil.core.application.UserContextProvider
 import dev.martinl.linkfacil.core.domain.entity.User
+import dev.martinl.linkfacil.core.domain.entity.UserProfile
+import dev.martinl.linkfacil.core.domain.exception.UnauthorizedAccessException
 import dev.martinl.linkfacil.core.domain.identifier.UserId
 import org.springframework.security.authentication.AuthenticationManager
+import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
 import java.util.*
@@ -21,40 +28,71 @@ class AuthService(
     private val jwtUtils: JwtUtils,
     private val authenticationManager: AuthenticationManager,
     private val emailService: EmailService
-) {
+) : UserContextProvider {
 
     fun registerUser(signupRequest: SignupRequest): Boolean {
-        // Check if username is already taken
-        if (userRepository.existsByUsername(signupRequest.username)) {
-            return false
-        }
-
-        // Check if email is already in use
         if (userRepository.existsByEmail(signupRequest.email)) {
             return false
         }
 
-        // Create verification token
         val verificationToken = UUID.randomUUID().toString()
 
-        // Create new user
         val user = User(
             id = UserId.generate(),
-            username = signupRequest.username,
+            fullName = signupRequest.username,
             email = signupRequest.email,
             hashedPassword = passwordEncoder.encode(signupRequest.password),
             profilePicture = signupRequest.profilePicture,
             emailVerified = false,
-            verificationToken = verificationToken
+            verificationToken = verificationToken,
+            permissions = listOf()
         )
 
-        // Save user
         userRepository.save(user)
 
-        // Send verification email
         emailService.sendVerificationEmail(user.email, verificationToken)
 
         return true
+    }
+
+    fun authenticateUserWithFirebase(loginRequest: FirebaseLoginRequest): JwtResponse {
+        val idToken = loginRequest.idToken
+
+        val decoded = FirebaseAuth.getInstance().verifyIdToken(idToken)
+
+        val email = decoded.email ?: throw BadCredentialsException("No email specified in Firebase token")
+        val name = decoded.name ?: throw BadCredentialsException("No name specified in Firebase token")
+        val picture = decoded.picture
+        val uid = decoded.uid
+
+        // Look up or create a local user
+        val user : User = userRepository.findByEmail(email) ?: userRepository.save(User(
+                UserId.generate(),
+                name,
+                email,
+                null,
+                picture,
+                true,
+                null,
+            listOf()
+            ))
+
+
+        val jwt = jwtUtils.generateJwtToken(UserDetailsImpl(
+            user.id.value,
+            user.email,
+            user.fullName,
+            user.email,
+            user.hashedPassword,
+            user.permissions.map { SimpleGrantedAuthority(it) }
+        ))
+
+        return JwtResponse(
+            token = jwt,
+            id = user.id.value,
+            username = user.fullName,
+            email = user.email
+        )
     }
 
     fun authenticateUser(loginRequest: LoginRequest): JwtResponse {
@@ -68,22 +106,17 @@ class AuthService(
             throw it
         })
 
-        // Set authentication in security context
-        // SecurityContextHolder.getContext().authentication = authentication
         val userDetails = authentication.principal as UserDetailsImpl
 
-        // Generate JWT token
         val jwt = jwtUtils.generateJwtToken(userDetails)
 
-        // Find user by username from userDetails
-        val user = userRepository.findByUsername(userDetails.username) 
-            ?: userRepository.findByEmail(userDetails.username) 
+        val user = userRepository.findByEmail(userDetails.email)
             ?: throw RuntimeException("User not found")
 
         return JwtResponse(
             token = jwt,
             id = user.id.value,
-            username = user.username,
+            username = user.fullName,
             email = user.email
         )
     }
@@ -95,5 +128,19 @@ class AuthService(
         val updatedUser = user.copy(emailVerified = true, verificationToken = null)
         userRepository.save(updatedUser)
         return true
+    }
+    override fun getCurrentUserId(): UserId {
+        return UserId(getCurrentUser().id)
+    }
+
+
+    fun getCurrentUser(): UserDetailsImpl {
+        val principal = SecurityContextHolder.getContext().authentication?.principal
+        val userDetails = principal as? UserDetailsImpl ?: throw UnauthorizedAccessException("No authenticated user found or user details not available")
+        return userDetails
+    }
+
+    override fun getCurrentUserProfile(): UserProfile {
+        return getCurrentUser()
     }
 }

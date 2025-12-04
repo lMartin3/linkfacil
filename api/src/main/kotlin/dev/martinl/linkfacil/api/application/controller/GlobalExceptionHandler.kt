@@ -1,6 +1,8 @@
 package dev.martinl.linkfacil.api.application.controller
 
 import dev.martinl.linkfacil.api.domain.dto.MessageResponse
+import dev.martinl.linkfacil.core.domain.exception.NotFoundException
+import dev.martinl.linkfacil.core.domain.exception.ValidationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -12,6 +14,12 @@ import org.springframework.web.bind.annotation.ResponseStatus
 
 @ControllerAdvice
 class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotFoundException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleValidationExceptions(ex: NotFoundException): ResponseEntity<MessageResponse> {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(MessageResponse("Not found error: ${ex.message}))"))
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -28,9 +36,14 @@ class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     fun handleHttpMessageNotReadable(ex: HttpMessageNotReadableException): ResponseEntity<MessageResponse> {
+
+        val cause = ex.rootCause
+        if (cause is ValidationException) {
+            return ResponseEntity.badRequest().body(MessageResponse(cause.message ?: "Validation error"))
+        }
+
         val errorMessage = ex.message ?: "Invalid request body"
 
-        // Extract field name from the error message if possible
         val fieldNameRegex = "JSON property (\\w+)".toRegex()
         val fieldNameMatch = fieldNameRegex.find(errorMessage)
         val fieldName = fieldNameMatch?.groupValues?.getOrNull(1)

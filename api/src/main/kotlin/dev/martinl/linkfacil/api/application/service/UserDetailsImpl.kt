@@ -1,7 +1,9 @@
-package dev.martinl.linkfacil.api.infrastructure.persistence.config.service
+package dev.martinl.linkfacil.api.application.service
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import dev.martinl.linkfacil.core.domain.entity.User
+import dev.martinl.linkfacil.core.domain.entity.UserProfile
+import dev.martinl.linkfacil.core.domain.identifier.UserId
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.userdetails.UserDetails
@@ -9,17 +11,27 @@ import org.springframework.security.core.userdetails.UserDetails
 class UserDetailsImpl(
     val id: String,
     private val username: String,
-    val email: String,
+    override val fullName: String,
+    override val email: String,
     @JsonIgnore
-    private val password: String,
+    private val password: String?,
     private val authorities: Collection<GrantedAuthority>
-) : UserDetails {
+) : UserDetails, UserProfile {
 
     override fun getAuthorities(): Collection<GrantedAuthority> = authorities
 
-    override fun getPassword(): String = password
+    override fun getPassword(): String? = password
+    override fun getUsername(): String? {
+        return username
+    }
 
-    override fun getUsername(): String = username
+    override fun getId(): UserId {
+        return UserId(id)
+    }
+
+    override fun getProfilePicture(): String {
+        return ""
+    }
 
     override fun isAccountNonExpired(): Boolean = true
 
@@ -35,7 +47,8 @@ class UserDetailsImpl(
 
             return UserDetailsImpl(
                 id = user.id.value,
-                username = user.username,
+                username = user.email,
+                fullName = user.fullName,
                 email = user.email,
                 password = user.hashedPassword,
                 authorities = authorities

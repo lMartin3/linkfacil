@@ -1,6 +1,7 @@
 package dev.martinl.linkfacil.api.infrastructure.persistence.repository
 
 import dev.martinl.linkfacil.api.infrastructure.persistence.entity.MongoUser
+import dev.martinl.linkfacil.api.infrastructure.persistence.repository.mongodb.MongoUserRepository
 import dev.martinl.linkfacil.core.domain.entity.User
 import dev.martinl.linkfacil.core.domain.identifier.UserId
 import dev.martinl.linkfacil.core.domain.repository.UserRepository
@@ -20,17 +21,9 @@ class UserRepositoryImpl(private val mongoUserRepository: MongoUserRepository) :
     override fun deleteById(id: UserId) {
         return mongoUserRepository.deleteById(id.value)
     }
-
-    fun findByUsername(username: String): User? {
-        return mongoUserRepository.findByUsername(username)?.toDomain()
-    }
     
     fun findByEmail(email: String): User? {
         return mongoUserRepository.findByEmail(email)?.toDomain()
-    }
-    
-    fun existsByUsername(username: String): Boolean {
-        return mongoUserRepository.existsByUsername(username)
     }
     
     fun existsByEmail(email: String): Boolean {

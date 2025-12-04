@@ -10,30 +10,32 @@ import org.springframework.data.mongodb.core.mapping.Document
 data class MongoUser(
     @Id
     val id: String,
-    
-    @Indexed(unique = true)
-    val username: String,
+
+    val fullName: String,
     
     @Indexed(unique = true)
     val email: String,
     
-    val hashedPassword: String,
+    val hashedPassword: String?,
     
     val profilePicture: String?,
     
     val emailVerified: Boolean = false,
     
-    val verificationToken: String? = null
+    val verificationToken: String? = null,
+
+    val permissions: List<String> = listOf()
 ) {
     fun toDomain(): User {
         return User(
             id = UserId(id),
-            username = username,
+            fullName = fullName,
             email = email,
             hashedPassword = hashedPassword,
             profilePicture = profilePicture,
             emailVerified = emailVerified,
-            verificationToken = verificationToken
+            verificationToken = verificationToken,
+            permissions = permissions
         )
     }
 
@@ -41,12 +43,14 @@ data class MongoUser(
         fun fromDomain(user: User): MongoUser {
             return MongoUser(
                 id = user.id.value,
-                username = user.username,
+                fullName = user.fullName,
                 email = user.email,
                 hashedPassword = user.hashedPassword,
                 profilePicture = user.profilePicture,
                 emailVerified = user.emailVerified,
-                verificationToken = user.verificationToken
+                verificationToken = user.verificationToken,
+                permissions = user.permissions
+
             )
         }
     }

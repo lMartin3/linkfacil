@@ -2,6 +2,7 @@ package dev.martinl.linkfacil.api.infrastructure.config
 
 import dev.martinl.linkfacil.api.infrastructure.persistence.config.jwt.AuthTokenFilter
 import dev.martinl.linkfacil.api.infrastructure.persistence.config.service.UserDetailsServiceImpl
+import org.slf4j.LoggerFactory
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.http.HttpStatus
@@ -24,6 +25,7 @@ class WebSecurityConfig(
     private val userDetailsService: UserDetailsServiceImpl,
     private val authTokenFilter: AuthTokenFilter
 ) {
+    val logger = LoggerFactory.getLogger(WebSecurityConfig::class.java)
 
     @Bean
     fun authenticationProvider(): DaoAuthenticationProvider {
@@ -55,6 +57,9 @@ class WebSecurityConfig(
                     .requestMatchers("/api-docs/**").permitAll()
                     .requestMatchers("/swagger-ui/**").permitAll()
                     .requestMatchers("/swagger-ui.html").permitAll()
+                    .requestMatchers("/api/page/code/**").permitAll()
+                    .requestMatchers("/v3/api-docs.yaml").permitAll()
+                    .requestMatchers("/v3/api-docs", "/v3/api-docs/**").permitAll()
                     .anyRequest().authenticated()
             }
             .formLogin { it.disable() }
@@ -66,6 +71,7 @@ class WebSecurityConfig(
                     if (request.requestURI.startsWith("/api/auth/")) {
                         return@authenticationEntryPoint
                     }
+                    logger.error("Unauthorized error: {} {}", authException.cause, authException.message)
                     response.sendError(HttpStatus.UNAUTHORIZED.value(), authException.message)
                 }
             }

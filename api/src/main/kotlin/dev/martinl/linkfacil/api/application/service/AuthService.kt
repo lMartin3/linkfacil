@@ -113,6 +113,10 @@ class AuthService(
         val user = userRepository.findByEmail(userDetails.email)
             ?: throw RuntimeException("User not found")
 
+        if(!user.emailVerified) {
+            throw BadCredentialsException("Please verify your email first")
+        }
+
         return JwtResponse(
             token = jwt,
             id = user.id.value,

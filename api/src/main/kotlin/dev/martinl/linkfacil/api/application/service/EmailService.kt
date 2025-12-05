@@ -7,14 +7,17 @@ import org.springframework.stereotype.Service
 import java.nio.charset.StandardCharsets
 
 @Service
-class EmailService(private val mailSender: JavaMailSender) {
+class EmailService(
+    private val mailSender: JavaMailSender,
+    @param:Value("\${linkfacil.public-url}") private val publicUrl : String
+) {
 
     @Value("\${spring.mail.username}")
     private lateinit var fromEmail: String
 
     fun sendVerificationEmail(to: String, token: String) {
         val subject = "Please verify your email"
-        val verificationUrl = "http://localhost:8080/api/auth/verify?token=$token"
+        val verificationUrl = "${publicUrl}/api/auth/verify?token=$token"
         
         val content = """
             <div>

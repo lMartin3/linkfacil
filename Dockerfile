@@ -7,7 +7,7 @@ COPY gradlew .
 COPY settings.gradle .
 COPY build.gradle .
 COPY expense/build.gradle.kts expense/
-COPY web/build.gradle web/
+COPY api/build.gradle api/
 
 # Make gradlew executable
 RUN chmod +x ./gradlew
@@ -17,7 +17,7 @@ RUN ./gradlew dependencies --no-daemon
 
 # Copy source code
 COPY expense/ expense/
-COPY web/ web/
+COPY api/ api/
 
 # Build the application
 RUN ./gradlew bootJar --no-daemon
@@ -27,7 +27,7 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 
 # Copy the built jar from the build stage
-COPY --from=build /app/web/build/libs/*.jar app.jar
+COPY --from=build /app/api/build/libs/*.jar app.jar
 
 # Environment variables that can be overridden
 ENV MONGODB_URI=mongodb://localhost:27017/linkfacil

@@ -17,8 +17,8 @@ class EmailService(
 
     fun sendVerificationEmail(to: String, token: String) {
         val subject = "Please verify your email"
-        val verificationUrl = "${publicUrl}/api/auth/verify?token=$token"
-        
+        val verificationUrl = "${publicUrl}/auth/verify?token=$token"
+
         val content = """
             <div>
                 <h1>Email Verification</h1>

@@ -5,7 +5,7 @@ WORKDIR /app
 COPY gradle/ gradle/
 COPY gradlew .
 COPY settings.gradle .
-COPY build.gradle .
+COPY build.gradle.kts .
 COPY core/build.gradle.kts core/
 COPY api/build.gradle api/
 

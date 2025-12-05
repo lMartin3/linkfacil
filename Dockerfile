@@ -4,7 +4,7 @@ WORKDIR /app
 # Copy gradle files first for better layer caching
 COPY gradle/ gradle/
 COPY gradlew .
-COPY settings.gradle .
+COPY settings.gradle.kts .
 COPY build.gradle.kts .
 COPY core/build.gradle.kts core/
 COPY api/build.gradle api/
